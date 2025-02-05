@@ -39,6 +39,9 @@ namespace GroqSharp
         [JsonPropertyName("tool_choice")]
         public string ToolChoice { get; set; } = "none";
 
+        [JsonPropertyName("reasoning_format")]
+        public string? ReasoningFormat { get; set; }
+
         #endregion
 
         #region Instance Methods
@@ -97,6 +100,18 @@ namespace GroqSharp
                 if (!string.IsNullOrEmpty(ToolChoice) && ToolChoice != "none")
                 {
                     writer.WriteString("tool_choice", ToolChoice);
+                }
+
+                if (!string.IsNullOrEmpty(ReasoningFormat))
+                {
+                    if (ReasoningFormat == "raw" && (Tools != null || JsonResponse))
+                    {
+                        throw new InvalidOperationException("Cannot use reasoning_format 'raw' with tools or json_response");
+                    }
+                    else
+                    {
+                        writer.WriteString("reasoning_format", ReasoningFormat);
+                    }
                 }
 
                 writer.WriteEndObject();

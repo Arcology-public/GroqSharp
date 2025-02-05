@@ -39,7 +39,8 @@ public class GroqClient :
     private Message _defaultSystemMessage;
     private int _maxStructuredRetryAttempts = 3;
     private int _maxToolInvocationDepth = 3;
-
+    private bool _jsonResponse;
+    private string? _reasoningFormat;
     #endregion
 
     #region Constructors
@@ -120,6 +121,20 @@ public class GroqClient :
         int maxDepth)
     {
         _maxToolInvocationDepth = maxDepth;
+        return this;
+    }
+
+    public IGroqClient SetJsonResponse(
+        bool jsonResponse)
+    {
+        _jsonResponse = jsonResponse;
+        return this;
+    }
+
+    public IGroqClient SetReasoningFormat(
+        string reasoningFormat)
+    {
+        _reasoningFormat = reasoningFormat;
         return this;
     }
 
@@ -241,7 +256,9 @@ public class GroqClient :
             Messages = messages,
             MaxTokens = _maxTokens,
             TopP = _topP,
-            Stop = _stop
+            Stop = _stop,
+            JsonResponse = _jsonResponse,
+            ReasoningFormat = _reasoningFormat
         };
 
         try
@@ -370,7 +387,9 @@ public class GroqClient :
                 Messages = currentMessages.ToArray(),
                 MaxTokens = _maxTokens,
                 TopP = _topP,
-                Stop = _stop
+                Stop = _stop,
+                JsonResponse = _jsonResponse,
+                ReasoningFormat = _reasoningFormat
             };
 
             try
@@ -474,7 +493,9 @@ public class GroqClient :
             MaxTokens = _maxTokens,
             TopP = _topP,
             Stop = _stop,
-            Stream = true
+            Stream = true,
+            JsonResponse = _jsonResponse,
+            ReasoningFormat = _reasoningFormat
         };
 
         string requestJson = request.ToJson();

@@ -29,7 +29,8 @@ namespace GroqSharp.Tests
                 Stop = "end",
                 Stream = true,
                 Tools = tools,
-                ToolChoice = "auto"
+                ToolChoice = "auto",
+                ReasoningFormat = "parsed"
             };
 
             // Act
@@ -45,6 +46,7 @@ namespace GroqSharp.Tests
             Assert.Contains("\"stream\":true", json);
             Assert.Contains("\"tools\":{\"type\":\"function\"", json);
             Assert.Contains("\"tool_choice\":\"auto\"", json);
+            Assert.Contains("\"reasoning_format\":\"parsed\"", json);
         }
 
         [Fact]
@@ -65,6 +67,7 @@ namespace GroqSharp.Tests
             Assert.DoesNotContain("max_tokens", json);
             Assert.DoesNotContain("top_p", json);
             Assert.DoesNotContain("stop", json);
+            Assert.DoesNotContain("reasoning_format", json);
         }
 
         [Fact]
