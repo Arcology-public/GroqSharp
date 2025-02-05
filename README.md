@@ -15,6 +15,7 @@ GroqSharp is designed to simplify your interactions with GroqCloud by offering:
 - **Function Integration**: Integrate and manage function calling within your applications.
 - **Retry Mechanism**: Implement configurable retry policies to handle transient errors when working with structured data effectively.
 - **Streaming Support**: Support for streaming responses to process data as it becomes available, providing real-time interaction capabilities.
+- **Reasoning Format**: Use reasoning format to specify how Groq should parse the response from reasoning models before returning.
 
 GroqSharp's function/tool integration support allows developers to extend the functionality of the Groq platform within their applications, making it easier to implement complex workflows and data manipulations directly within chat interfaces.
 
