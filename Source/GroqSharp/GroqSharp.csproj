@@ -5,17 +5,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Title>GroqSharp</Title>
+    <Title>GroqSharpR</Title>
     <Authors>Arcology,Sarel.Esterhuizen</Authors>
     <VersionPrefix>1.2.0</VersionPrefix>
     <VersionSuffix></VersionSuffix>
-    <Description>GroqSharp is a C# client library that makes it easy to interact with GroqCloud. It's designed to provide a simple and flexible interface, allowing you to seamlessly integrate the Groq service into your C# applications. This is a fork of the original package written by Sarel Esterhuizen.</Description>
+    <Description>GroqSharpR is a C# client library that makes it easy to interact with GroqCloud. It's designed to provide a simple and flexible interface, allowing you to seamlessly integrate the Groq service into your C# applications. This is a fork of the original package written by Sarel Esterhuizen, adding support for reasoning models.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/Arcology-public/GroqSharp</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Arcology-public/GroqSharp</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Copyright>© 2025 Arcology Ltd</Copyright>
-    <PackageTags>C#; Groq; API; Client; Chatbot; Language Models; GroqSharp; Llama</PackageTags>
+    <PackageTags>C#; Groq; API; Client; Chatbot; Language Models; GroqSharp; Llama; GroqSharpR</PackageTags>
     <PackageReleaseNotes>
       - Add ReasoningMode for reasoning models
     </PackageReleaseNotes>

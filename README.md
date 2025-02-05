@@ -1,10 +1,10 @@
 # GroqSharp
 
-[![NuGet Badge](https://buildstats.info/nuget/GroqSharp)](https://www.nuget.org/packages/GroqSharp)
-[![Build and Test](https://github.com/Sarel-Esterhuizen/GroqSharp/actions/workflows/build-and-test.yml/badge.svg?branch=main)](https://github.com/Sarel-Esterhuizen/GroqSharp/actions/workflows/build-and-test.yml)
-[![Publish to NuGet](https://github.com/Sarel-Esterhuizen/GroqSharp/actions/workflows/publish-to-nuget.yml/badge.svg)](https://github.com/Sarel-Esterhuizen/GroqSharp/actions/workflows/publish-to-nuget.yml)
+[![NuGet Badge](https://buildstats.info/nuget/GroqSharpR)](https://www.nuget.org/packages/GroqSharpR)
+[![Build and Test](https://github.com/arcology-public/GroqSharp/actions/workflows/build-and-test.yml/badge.svg?branch=main)](https://github.com/arcology-public/GroqSharp/actions/workflows/build-and-test.yml)
+[![Publish to NuGet](https://github.com/arcology-public/GroqSharp/actions/workflows/publish-to-nuget.yml/badge.svg)](https://github.com/arcology-public/GroqSharp/actions/workflows/publish-to-nuget.yml)
 
-GroqSharp is a community maintained C# client library for interacting with [GroqCloud](https://groq.com/). Designed to provide a simple and flexible interface, it enables seamless integration of Groq services into your C# applications.
+GroqSharp is a community maintained C# client library for interacting with [GroqCloud](https://groq.com/). Designed to provide a simple and flexible interface, it enables seamless integration of Groq services into your C# applications.  This fork adds support for the reasoning mode available in the Groq API.
 
 ## Why GroqSharp?
 
@@ -27,7 +27,7 @@ GroqSharp's function/tool integration support allows developers to extend the fu
 Install GroqSharp via NuGet:
 
 ```bash
-dotnet add package GroqSharp
+dotnet add package GroqSharpR
 ```
 
 ### Environment Setup
