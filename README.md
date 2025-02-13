@@ -1,6 +1,6 @@
 # GroqSharp
 
-[![NuGet Badge](https://buildstats.info/nuget/GroqSharpR)](https://www.nuget.org/packages/GroqSharpR)
+[![NuGet](https://www.nuget.org/Content/gallery/img/logo-header-94x29.png)](https://www.nuget.org/packages/GroqSharpR)
 [![Build and Test](https://github.com/arcology-public/GroqSharp/actions/workflows/build-and-test.yml/badge.svg?branch=main)](https://github.com/arcology-public/GroqSharp/actions/workflows/build-and-test.yml)
 [![Publish to NuGet](https://github.com/arcology-public/GroqSharp/actions/workflows/publish-to-nuget.yml/badge.svg)](https://github.com/arcology-public/GroqSharp/actions/workflows/publish-to-nuget.yml)
 
