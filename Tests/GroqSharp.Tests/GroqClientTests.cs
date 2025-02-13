@@ -202,7 +202,7 @@ namespace GroqSharp.Tests
             _mockHandler.SetHandler(async request =>
             {
                 var requestBody = await request.Content.ReadAsStringAsync();
-                var responseMessage = requestBody.Contains("Executed") ? "Tool executed" : "<function>mocktool{\"input\":\"testinput\"}</function>";
+                var responseMessage = requestBody.Contains("Executed") ? "Tool executed" : "<function=mocktool>{\"input\":\"testinput\"}</function>";
                 var responseContent = new
                 {
                     choices = new List<dynamic>
