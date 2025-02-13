@@ -1,5 +1,7 @@
-﻿using GroqSharp.Tools;
+﻿using GroqSharp.Models;
+using GroqSharp.Tools;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace GroqSharp
 {
@@ -34,7 +36,32 @@ namespace GroqSharp
                             // Handle normal content response.
                             if (message.TryGetProperty("content", out var content) && content.GetString() != null)
                             {
-                                response.Contents.Add(content.GetString());
+
+                                var responseContent = content.GetString();
+                                // If there were no tool calls, check for tool call patterns in the contents
+                                var toolCallPattern = @"<function>(?<toolName>\w+)\{(?<parameters>.*?)\}</function>";
+                                var matches = Regex.Matches(responseContent, toolCallPattern);
+                                if (matches.Count > 0)
+                                {
+                                    foreach (Match match in matches)
+                                    {
+                                        var toolName = match.Groups["toolName"].Value;
+                                        var parametersJson = "{" + match.Groups["parameters"].Value + "}";
+                                        var parameters = JsonSerializer.Deserialize<Dictionary<string, object>>(parametersJson);
+                                        var toolCallInstance = new GroqToolCall
+                                        {
+                                            Id = Guid.NewGuid().ToString(),
+                                            ToolName = toolName,
+                                            Parameters = parameters
+                                        };
+                                        response.ToolCalls.Add(toolCallInstance);
+                                    }
+                                }
+                                else
+                                {
+                                    response.Contents.Add(content.GetString());
+                                }
+
                             }
 
                             // Handle tool calls nested within message
@@ -42,7 +69,7 @@ namespace GroqSharp
                             {
                                 // Need to set the full contents message as assistant content.
                                 string serializedMessage = message.GetRawText();
-                                response.Contents.Add(serializedMessage); 
+                                response.Contents.Add(serializedMessage);
 
                                 foreach (JsonElement toolCall in toolCalls.EnumerateArray())
                                 {
@@ -75,7 +102,7 @@ namespace GroqSharp
         {
             try
             {
-                if (toolCall.TryGetProperty("id", out var id)&&
+                if (toolCall.TryGetProperty("id", out var id) &&
                     toolCall.TryGetProperty("type", out var type) &&
                     type.GetString() == "function" &&
                     toolCall.TryGetProperty("function", out var function))
@@ -123,7 +150,7 @@ namespace GroqSharp
                 JsonValueKind.Object => element.EnumerateObject().ToDictionary(prop => prop.Name, prop => ConvertJsonElement(prop.Value)),
                 JsonValueKind.Undefined => throw new NotImplementedException(),
                 JsonValueKind.Null => throw new NotImplementedException(),
-                _ => element.GetRawText() 
+                _ => element.GetRawText()
             };
         }
 

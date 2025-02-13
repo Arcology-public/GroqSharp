@@ -142,7 +142,7 @@ public class GroqClient :
         params IGroqTool[] tools)
     {
         foreach (var tool in tools)
-            _tools[tool.Name] = tool;
+            _tools[tool.Name.ToLower()] = tool;
         return this;
     }
 
@@ -151,7 +151,7 @@ public class GroqClient :
     {
         foreach (var toolName in toolNames)
         {
-            _tools.Remove(toolName);
+            _tools.Remove(toolName.ToLower());
         }
         return this;
     }
@@ -192,7 +192,9 @@ public class GroqClient :
         // First check if max depth is exceeded
         if (depth >= _maxToolInvocationDepth)
         {
-            throw new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+            var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+            exception.Data["Messages"] = messages;
+            throw exception;
         }
 
         // Add the assistant's original response to the conversation before handling tool calls
@@ -210,7 +212,7 @@ public class GroqClient :
         {
             foreach (var call in response.ToolCalls)
             {
-                if (_tools.TryGetValue(call.ToolName, out var tool))
+                if (_tools.TryGetValue(call.ToolName.ToLower(), out var tool))
                 {
                     var toolResult = await tool.ExecuteAsync(call.Parameters);
                     messages.Add(new MessageTool
@@ -225,7 +227,7 @@ public class GroqClient :
             // Reinvoke the API with the updated messages
             return await CreateChatCompletionWithToolsAsync(messages, depth);
         }
-
+        
         // If there were no tool calls, just return the original response
         return response.Contents.FirstOrDefault();
     }
