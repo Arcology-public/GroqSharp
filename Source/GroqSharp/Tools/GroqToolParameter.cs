@@ -8,6 +8,7 @@
         public GroqToolParameterType Type { get; private set; }
 
         public string Description { get; private set; }
+        public IEnumerable<string>? Enum { get; set; }
 
         public bool Required { get; private set; } = true;
 
@@ -20,12 +21,15 @@
         public GroqToolParameter(
             GroqToolParameterType type,
             string description,
-            bool required = true)
+            bool required = true,
+            IEnumerable<string>? enumValues = null)
         {
             Type = type;
             Description = description;
             Required = required;
             Properties = type == GroqToolParameterType.Object ? new Dictionary<string, IGroqToolParameter>() : null;
+            Enum = enumValues;
+
         }
 
         #endregion
@@ -50,6 +54,10 @@
                 ["type"] = Type.ToString().ToLower(),
                 ["description"] = Description
             };
+            if(Enum != null)
+            {
+                result["enum"] = Enum;
+            }
 
             if (Properties != null && Properties.Any())
             {

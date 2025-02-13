@@ -52,5 +52,23 @@ namespace GroqSharp.Tests.Tools
             Assert.Contains("\"nested\": {", jsonString);
             Assert.Contains(expectedNestedType, jsonString);
         }
+
+        [Fact]
+        public void GroqParameter_with_Enum_RepresentsCorrectJson()
+        {
+            // Arrange
+            var enumParam = new GroqToolParameter(GroqToolParameterType.String, "Enum parameter");
+            enumParam.Enum = new List<string> { "possible value 1", "possible value 2" };
+
+            // Act
+            var jsonObject = enumParam.ToJsonSerializableObject();
+            var jsonString = JsonSerializer.Serialize(jsonObject, new JsonSerializerOptions { WriteIndented = false });
+
+            // Assert
+            var expectedType = "\"type\":\"string\"";
+            var expectedEnumValues = "\"enum\":[\"possible value 1\",\"possible value 2\"]";
+            Assert.Contains(expectedType, jsonString);
+            Assert.Contains(expectedEnumValues, jsonString);
+        }
     }
 }
