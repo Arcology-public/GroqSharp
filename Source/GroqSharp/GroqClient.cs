@@ -220,7 +220,7 @@ public class GroqClient :
             if (_parallelToolInvocationAllowed)
             {
                 var toolTasks = response.ToolCalls.Select(CallTool);
-                var toolResults = await Task.WhenAll<MessageTool>(toolTasks);
+                var toolResults = await Task.WhenAll(toolTasks);
                 messages.AddRange(toolResults);
             }
             else
@@ -243,7 +243,7 @@ public class GroqClient :
 
     private async Task<MessageTool> CallTool(GroqToolCall call)
     {
-        if (_tools.TryGetValue(call.ToolName.ToLower(), out var tool))
+        if (_tools.TryGetValue(call.ToolName.ToLower().Trim(), out var tool))
         {
             var toolResult = await tool.ExecuteAsync(call.Parameters);
             return new MessageTool

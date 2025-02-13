@@ -39,7 +39,7 @@ namespace GroqSharp
 
                                 var responseContent = content.GetString();
                                 // If there were no tool calls, check for tool call patterns in the contents
-                                var toolCallPattern = @"<function=(?<toolName>\w+)>\{(?<parameters>.*?)\}</*function>";
+                                var toolCallPattern = @"<function=(?<toolName>\w+)>\{(?<parameters>.*?)\}[<{]/*function>";
                                 var matches = Regex.Matches(responseContent, toolCallPattern);
                                 if (matches.Count > 0)
                                 {
