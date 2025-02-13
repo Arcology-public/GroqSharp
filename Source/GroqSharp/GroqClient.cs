@@ -41,6 +41,7 @@ public class GroqClient :
     private int _maxToolInvocationDepth = 3;
     private bool _jsonResponse;
     private string? _reasoningFormat;
+    private bool _parallelToolInvocationAllowed = false;
     #endregion
 
     #region Constructors
@@ -156,6 +157,12 @@ public class GroqClient :
         return this;
     }
 
+    public IGroqClient AllowParallelToolInvocation(bool allow)
+    {
+        _parallelToolInvocationAllowed = allow;
+        return this;
+    }
+
     #endregion
 
     #region Helper Methods
@@ -210,26 +217,43 @@ public class GroqClient :
         // Handle any tool calls
         if (response.ToolCalls != null && response.ToolCalls.Any())
         {
-            foreach (var call in response.ToolCalls)
+            if (_parallelToolInvocationAllowed)
             {
-                if (_tools.TryGetValue(call.ToolName.ToLower(), out var tool))
+                var toolTasks = response.ToolCalls.Select(CallTool);
+                var toolResults = await Task.WhenAll<MessageTool>(toolTasks);
+                messages.AddRange(toolResults);
+            }
+            else
+            {
+                foreach (var call in response.ToolCalls)
                 {
-                    var toolResult = await tool.ExecuteAsync(call.Parameters);
-                    messages.Add(new MessageTool
-                    {
-                        Role = MessageRoleType.Tool,
-                        Content = toolResult,
-                        ToolCallId = call.Id
-                    });
+                    var toolResult = await CallTool(call);
+                    if (toolResult != null)
+                        messages.Add(toolResult);
                 }
             }
 
             // Reinvoke the API with the updated messages
             return await CreateChatCompletionWithToolsAsync(messages, depth);
         }
-        
+
         // If there were no tool calls, just return the original response
         return response.Contents.FirstOrDefault();
+    }
+
+    private async Task<MessageTool> CallTool(GroqToolCall call)
+    {
+        if (_tools.TryGetValue(call.ToolName.ToLower(), out var tool))
+        {
+            var toolResult = await tool.ExecuteAsync(call.Parameters);
+            return new MessageTool
+            {
+                Role = MessageRoleType.Tool,
+                Content = toolResult,
+                ToolCallId = call.Id
+            };
+        }
+        return null;
     }
 
 
