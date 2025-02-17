@@ -2,7 +2,9 @@
 using GroqSharp.Models;
 using GroqSharp.Tools;
 using GroqSharp.Utilities;
+using System;
 using System.Net.Http.Headers;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -41,6 +43,7 @@ public class GroqClient :
     private int _maxToolInvocationDepth = 3;
     private bool _jsonResponse;
     private string? _reasoningFormat;
+    private string? _serviceTier;
     private bool _parallelToolInvocationAllowed = false;
     #endregion
 
@@ -138,6 +141,12 @@ public class GroqClient :
         _reasoningFormat = reasoningFormat;
         return this;
     }
+        public IGroqClient SetServiceTier(
+        string serviceTier)
+    {
+        _serviceTier = serviceTier;
+        return this;
+    }
 
     public IGroqClient RegisterTools(
         params IGroqTool[] tools)
@@ -194,8 +203,10 @@ public class GroqClient :
     private async Task<string> HandleToolResponsesAndReinvokeAsync(
         List<Message> messages,
         GroqClientResponse response,
-        int depth)
+        int depth,
+        CancellationToken? cancellationToken)
     {
+
         // First check if max depth is exceeded
         if (depth >= _maxToolInvocationDepth)
         {
@@ -234,7 +245,7 @@ public class GroqClient :
             }
 
             // Reinvoke the API with the updated messages
-            return await CreateChatCompletionWithToolsAsync(messages, depth);
+            return await CreateChatCompletionWithToolsAsync(messages, depth, cancellationToken);
         }
 
         // If there were no tool calls, just return the original response
@@ -263,7 +274,12 @@ public class GroqClient :
     public async Task<string?> CreateChatCompletionAsync(
        params Message[] messages)
     {
-        if (messages == null || messages.Length == 0)
+        return await CreateChatCompletionAsync(messages);
+    }
+
+    public async Task<string> CreateChatCompletionAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
+    {
+        if (messages == null || messages.Count() == 0)
         {
             if (_defaultSystemMessage != null)
             {
@@ -279,12 +295,13 @@ public class GroqClient :
         {
             Model = _model,
             Temperature = _temperature,
-            Messages = messages,
+            Messages = messages.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,
             Stop = _stop,
             JsonResponse = _jsonResponse,
-            ReasoningFormat = _reasoningFormat
+            ReasoningFormat = _reasoningFormat,
+            ServiceTier = _serviceTier
         };
 
         try
@@ -313,13 +330,21 @@ public class GroqClient :
 
     public async Task<string> CreateChatCompletionWithToolsAsync(
         List<Message> messages,
-        int depth = 0)
+        int depth = 0,
+        CancellationToken? cancellationToken = null)
     {
         if (depth >= _maxToolInvocationDepth)
         {
-            throw new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+            var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+            exception.Data["Messages"] = messages;
+            throw exception;
         }
-
+        if (cancellationToken.HasValue && cancellationToken.Value.IsCancellationRequested)
+        {
+            var exception = new TaskCanceledException("Task was cancelled");
+            exception.Data["Messages"] = messages;
+            throw exception;
+        }
         if (messages == null || messages.Count == 0)
         {
             if (_defaultSystemMessage != null)
@@ -345,7 +370,15 @@ public class GroqClient :
 
         string requestJson = request.ToJson();
         var content = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
-        var response = await _client.PostAsync(_baseUrl, content);
+        HttpResponseMessage response;
+        if (cancellationToken != null)
+        {
+            response = await _client.PostAsync(_baseUrl, content, cancellationToken.Value);
+        }
+        else
+        {
+            response = await _client.PostAsync(_baseUrl, content);
+        }
         if (!response.IsSuccessStatusCode)
         {
             throw new HttpRequestException($"API request failed: {await response.Content.ReadAsStringAsync()}");
@@ -353,7 +386,7 @@ public class GroqClient :
 
         var responseJson = await response.Content.ReadAsStringAsync();
         var chatResponse = GroqClientResponse.TryCreateFromJson(responseJson);
-        return await HandleToolResponsesAndReinvokeAsync(messages, chatResponse, depth + 1);
+        return await HandleToolResponsesAndReinvokeAsync(messages, chatResponse, depth + 1, cancellationToken);
     }
 
 
@@ -415,7 +448,8 @@ public class GroqClient :
                 TopP = _topP,
                 Stop = _stop,
                 JsonResponse = _jsonResponse,
-                ReasoningFormat = _reasoningFormat
+                ReasoningFormat = _reasoningFormat,
+                ServiceTier = _serviceTier                
             };
 
             try
@@ -508,26 +542,44 @@ public class GroqClient :
     public async IAsyncEnumerable<string> CreateChatCompletionStreamAsync(
         params Message[] messages)
     {
-        if (messages == null || messages.Length == 0)
+
+        await foreach (var message in CreateChatCompletionStreamAsync(messages))
+        {
+            yield return message;
+        }
+    }
+
+    public async IAsyncEnumerable<string> CreateChatCompletionStreamAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
+    {
+        if (messages == null || messages.Count() == 0)
             throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
 
         var request = new GroqClientRequest
         {
             Model = _model,
             Temperature = _temperature,
-            Messages = messages,
+            Messages = messages.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,
             Stop = _stop,
             Stream = true,
             JsonResponse = _jsonResponse,
-            ReasoningFormat = _reasoningFormat
+            ReasoningFormat = _reasoningFormat,
+            ServiceTier = _serviceTier
         };
 
         string requestJson = request.ToJson();
         var httpContent = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
 
-        HttpResponseMessage response = await _client.PostAsync(_baseUrl, httpContent);
+        HttpResponseMessage response;
+        if (cancellationToken != null)
+        {
+            response = await _client.PostAsync(_baseUrl, httpContent, cancellationToken.Value);
+        }
+        else
+        {
+            response = await _client.PostAsync(_baseUrl, httpContent);
+        }
         if (!response.IsSuccessStatusCode)
         {
             var errorResponse = await response.Content.ReadAsStringAsync();
@@ -562,6 +614,7 @@ public class GroqClient :
             }
         }
     }
+
 
     #endregion
 }

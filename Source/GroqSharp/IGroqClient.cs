@@ -5,15 +5,26 @@ namespace GroqSharp
 {
     public interface IGroqClient
     {
-        Task<string> CreateChatCompletionAsync(
+        Task<string?> CreateChatCompletionAsync(
             params Message[] messages);
 
-        Task<string> CreateChatCompletionWithToolsAsync(
+        Task<string?> CreateChatCompletionAsync(
+         IEnumerable<Message> messages,
+        CancellationToken? cancellationToken = null
+        );
+
+        Task<string?> CreateChatCompletionWithToolsAsync(
             List<Message> messages,
-            int depth = 0);
+            int depth = 0,
+            CancellationToken? cancellationToken = null);
 
         IAsyncEnumerable<string> CreateChatCompletionStreamAsync(
-            params Message[] messages);
+            params Message[] messages);  
+        
+        IAsyncEnumerable<string> CreateChatCompletionStreamAsync(
+         IEnumerable<Message> messages,
+        CancellationToken? cancellationToken = null
+        );
 
         Task<string?> GetStructuredChatCompletionAsync(
             string jsonStructure,

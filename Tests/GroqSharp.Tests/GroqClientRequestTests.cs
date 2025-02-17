@@ -30,7 +30,8 @@ namespace GroqSharp.Tests
                 Stream = true,
                 Tools = tools,
                 ToolChoice = "auto",
-                ReasoningFormat = "parsed"
+                ReasoningFormat = "parsed",
+                ServiceTier = "flex"
             };
 
             // Act
@@ -47,6 +48,7 @@ namespace GroqSharp.Tests
             Assert.Contains("\"tools\":{\"type\":\"function\"", json);
             Assert.Contains("\"tool_choice\":\"auto\"", json);
             Assert.Contains("\"reasoning_format\":\"parsed\"", json);
+            Assert.Contains("\"service_tier\":\"flex\"", json);
         }
 
         [Fact]

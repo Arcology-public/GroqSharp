@@ -42,6 +42,9 @@ namespace GroqSharp
         [JsonPropertyName("reasoning_format")]
         public string? ReasoningFormat { get; set; }
 
+        [JsonPropertyName("service_tier")]
+        public string? ServiceTier { get; set; }
+
         #endregion
 
         #region Instance Methods
@@ -102,7 +105,7 @@ namespace GroqSharp
                     writer.WriteString("tool_choice", ToolChoice);
                 }
 
-                if (!string.IsNullOrEmpty(ReasoningFormat))
+                if(!string.IsNullOrEmpty(ReasoningFormat))
                 {
                     if (ReasoningFormat == "raw" && (Tools != null || JsonResponse))
                     {
@@ -112,6 +115,11 @@ namespace GroqSharp
                     {
                         writer.WriteString("reasoning_format", ReasoningFormat);
                     }
+                }
+                
+                if(!string.IsNullOrEmpty(ServiceTier))
+                {
+                    writer.WriteString("service_tier", ServiceTier);
                 }
 
                 writer.WriteEndObject();

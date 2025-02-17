@@ -225,6 +225,22 @@ namespace GroqSharp.Tests
             // Assert
             Assert.Equal("Tool executed", result);
         }
+        [Fact]
+        public async Task CreateChatCompletionAsync_CancelsOnCancellationToken()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+            {
+                await _client.CreateChatCompletionAsync(
+                    [new Message { Role = MessageRoleType.User, Content = "Test Request" }],
+                    cts.Token
+                );
+            });
+        }
 
 
 
