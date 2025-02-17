@@ -277,7 +277,7 @@ public class GroqClient :
         return await CreateChatCompletionAsync(messages);
     }
 
-    public async Task<string> CreateChatCompletionAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
+    public async Task<string?> CreateChatCompletionAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
     {
         if (messages == null || messages.Count() == 0)
         {
@@ -328,7 +328,7 @@ public class GroqClient :
         }
     }
 
-    public async Task<string> CreateChatCompletionWithToolsAsync(
+    public async Task<string?> CreateChatCompletionWithToolsAsync(
         List<Message> messages,
         int depth = 0,
         CancellationToken? cancellationToken = null)
