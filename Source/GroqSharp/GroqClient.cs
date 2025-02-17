@@ -274,7 +274,7 @@ public class GroqClient :
     public async Task<string?> CreateChatCompletionAsync(
        params Message[] messages)
     {
-        return await CreateChatCompletionAsync(messages);
+        return await CreateChatCompletionAsync(messages?.ToList());
     }
 
     public async Task<string?> CreateChatCompletionAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
@@ -308,7 +308,16 @@ public class GroqClient :
         {
             string requestJson = request.ToJson();
             var httpContent = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
-            HttpResponseMessage response = await _client.PostAsync(_baseUrl, httpContent);
+            HttpResponseMessage response;
+
+            if (cancellationToken != null)
+            {
+                response = await _client.PostAsync(_baseUrl, httpContent, cancellationToken.Value);
+            }
+            else
+            {
+                response = await _client.PostAsync(_baseUrl, httpContent);
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -321,6 +330,10 @@ public class GroqClient :
                 chatResponse.Contents != null)
                 return chatResponse.Contents.FirstOrDefault();
             return null;
+        }
+        catch(TaskCanceledException ex)
+        {
+            throw new TaskCanceledException("Task was cancelled", ex);
         }
         catch (Exception ex)
         {
@@ -543,7 +556,7 @@ public class GroqClient :
         params Message[] messages)
     {
 
-        await foreach (var message in CreateChatCompletionStreamAsync(messages))
+        await foreach (var message in CreateChatCompletionStreamAsync(messages?.ToList()))
         {
             yield return message;
         }
