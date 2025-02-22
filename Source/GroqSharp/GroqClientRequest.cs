@@ -19,7 +19,10 @@ namespace GroqSharp
         public Message[] Messages { get; init; }
 
         [JsonPropertyName("max_tokens")]
-        public int? MaxTokens { get; init; }
+        public int? MaxTokens { get; init; }   
+        
+        [JsonPropertyName("seed")]
+        public int? Seed { get; init; }
 
         [JsonPropertyName("top_p")]
         public double? TopP { get; init; }
@@ -68,6 +71,8 @@ namespace GroqSharp
                     writer.WriteNumber("temperature", Temperature.Value);
                 if (MaxTokens.HasValue)
                     writer.WriteNumber("max_tokens", MaxTokens.Value);
+                if (Seed.HasValue)
+                    writer.WriteNumber("seed", Seed.Value);
                 if (TopP.HasValue)
                     writer.WriteNumber("top_p", TopP.Value);
                 if (!string.IsNullOrEmpty(Stop))

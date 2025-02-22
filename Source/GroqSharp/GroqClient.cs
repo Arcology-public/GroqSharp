@@ -4,6 +4,7 @@ using GroqSharp.Tools;
 using GroqSharp.Utilities;
 using System;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -36,6 +37,8 @@ public class GroqClient :
     private string _model;
     private double? _temperature;
     private int? _maxTokens;
+    private int? _seed;
+    private bool _randomSeed = false;
     private double? _topP;
     private string? _stop;
     private Message _defaultSystemMessage;
@@ -45,6 +48,7 @@ public class GroqClient :
     private string? _reasoningFormat;
     private string? _serviceTier;
     private bool _parallelToolInvocationAllowed = false;
+    private Random _random;
     #endregion
 
     #region Constructors
@@ -54,6 +58,7 @@ public class GroqClient :
         string model,
         HttpClient? client = null)
     {
+        _random = new Random();
         _model = model;
         _client = client ?? new HttpClient();
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(BearerTokenPrefix, apiKey);
@@ -90,6 +95,20 @@ public class GroqClient :
         int? maxTokens)
     {
         _maxTokens = maxTokens;
+        return this;
+    } 
+    
+    public IGroqClient SetSeed(
+        int? seed)
+    {
+        _seed = seed;
+        return this;
+    }
+    
+    public IGroqClient SetRandomSeedPerRequest(
+        bool useRandomSeed)
+    {
+        _randomSeed = useRandomSeed;
         return this;
     }
 
@@ -295,6 +314,7 @@ public class GroqClient :
         {
             Model = _model,
             Temperature = _temperature,
+            Seed = _randomSeed ? _random.Next() : _seed,
             Messages = messages.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,
@@ -378,7 +398,15 @@ public class GroqClient :
             Model = _model,
             Messages = messages.ToArray(),
             Tools = toolSpecs,
-            ToolChoice = "auto"
+            ToolChoice = "auto",
+            Temperature = _temperature,
+            Seed = _randomSeed ? _random.Next() : _seed,
+            MaxTokens = _maxTokens,
+            TopP = _topP,
+            Stop = _stop,
+            JsonResponse = _jsonResponse,
+            ReasoningFormat = _reasoningFormat,
+            ServiceTier = _serviceTier
         };
 
         string requestJson = request.ToJson();
@@ -456,6 +484,7 @@ public class GroqClient :
             {
                 Model = _model,
                 Temperature = _temperature,
+                Seed = _randomSeed ? _random.Next() : _seed,
                 Messages = currentMessages.ToArray(),
                 MaxTokens = _maxTokens,
                 TopP = _topP,
@@ -571,6 +600,7 @@ public class GroqClient :
         {
             Model = _model,
             Temperature = _temperature,
+            Seed = _randomSeed ? _random.Next() : _seed,
             Messages = messages.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,

@@ -26,6 +26,7 @@ namespace GroqSharp.Tests
                 Messages = new Message[] { new Message { Content = "Hello", Role = MessageRoleType.User } },
                 MaxTokens = 150,
                 TopP = 0.9,
+                Seed = 1,
                 Stop = "end",
                 Stream = true,
                 Tools = tools,
@@ -43,6 +44,7 @@ namespace GroqSharp.Tests
             Assert.Contains("\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}]", json);
             Assert.Contains("\"max_tokens\":150", json);
             Assert.Contains("\"top_p\":0.9", json);
+            Assert.Contains("\"seed\":1", json);
             Assert.Contains("\"stop\":\"end\"", json);
             Assert.Contains("\"stream\":true", json);
             Assert.Contains("\"tools\":{\"type\":\"function\"", json);
@@ -70,6 +72,7 @@ namespace GroqSharp.Tests
             Assert.DoesNotContain("top_p", json);
             Assert.DoesNotContain("stop", json);
             Assert.DoesNotContain("reasoning_format", json);
+            Assert.DoesNotContain("seed", json);
         }
 
         [Fact]
