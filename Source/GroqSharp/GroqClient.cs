@@ -280,7 +280,7 @@ public class GroqClient :
             {
                 Role = MessageRoleType.Tool,
                 Content = toolResult,
-                ToolCallId = call.Id
+                ToolCallId = string.IsNullOrWhiteSpace(call.Id) ? Guid.NewGuid().ToString() : call.Id
             };
         }
         return null;
