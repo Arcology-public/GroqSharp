@@ -104,5 +104,21 @@
             Assert.Equal("1", response.ToolCalls[0].Id);
             Assert.Equal("Sum", response.ToolCalls[0].ToolName);
         }
+
+
+
+        [Fact]
+        public void FromJson_ValidToolCallWithNullParameters_CreatesCorrectToolCalls()
+        {
+            // Arrange
+            string json = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"tool_calls\":[{\"id\":\"1\",\"type\":\"function\",\"function\":{\"name\":\"parameterlessTool\",\"arguments\":\"null\"}}]}}]}";
+            
+            // Act
+            var response = GroqClientResponse.FromJson(json);
+
+            // Assert
+            Assert.Single(response.ToolCalls);
+            Assert.Equal("parameterlessTool", response.ToolCalls[0].ToolName);
+        }
     }
 }

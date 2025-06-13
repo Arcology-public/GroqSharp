@@ -114,17 +114,28 @@ namespace GroqSharp
                         if (argsString != null)
                         {
                             var argsElement = JsonDocument.Parse(argsString).RootElement;
-                            var parameters = argsElement.EnumerateObject().ToDictionary(
-                                item => item.Name,
-                                item => ConvertJsonElement(item.Value)
-                            );
-
-                            return new GroqToolCall
+                            if (argsElement.ValueKind != JsonValueKind.Null)
                             {
-                                Id = id.GetString(),
-                                ToolName = toolName.GetString(),
-                                Parameters = parameters
-                            };
+                                var enumerated = argsElement.EnumerateObject();
+                                var parameters = enumerated.ToDictionary(
+                                    item => item.Name,
+                                    item => ConvertJsonElement(item.Value)
+                                );
+                                return new GroqToolCall
+                                {
+                                    Id = id.GetString(),
+                                    ToolName = toolName.GetString(),
+                                    Parameters = parameters
+                                };
+                            } else
+                            {
+                                return new GroqToolCall()
+                                {
+                                    Id = id.GetString(),
+                                    ToolName = toolName.GetString(),
+                                    Parameters = new Dictionary<string, object>()
+                                };
+                            }
                         }
                     }
                 }
