@@ -46,6 +46,7 @@ public class GroqClient :
     private int _maxToolInvocationDepth = 3;
     private bool _jsonResponse;
     private string? _reasoningFormat;
+    private string? _reasoningEffort;
     private string? _serviceTier;
     private bool _parallelToolInvocationAllowed = false;
     private Random _random;
@@ -158,6 +159,13 @@ public class GroqClient :
         string reasoningFormat)
     {
         _reasoningFormat = reasoningFormat;
+        return this;
+    } 
+    
+    public IGroqClient SetReasoningEffort(
+        string reasoningEffort)
+    {
+        _reasoningEffort = reasoningEffort;
         return this;
     }
         public IGroqClient SetServiceTier(
@@ -321,6 +329,7 @@ public class GroqClient :
             Stop = _stop,
             JsonResponse = _jsonResponse,
             ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
             ServiceTier = _serviceTier
         };
 
@@ -406,6 +415,7 @@ public class GroqClient :
             Stop = _stop,
             JsonResponse = _jsonResponse,
             ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
             ServiceTier = _serviceTier
         };
 
@@ -491,6 +501,7 @@ public class GroqClient :
                 Stop = _stop,
                 JsonResponse = _jsonResponse,
                 ReasoningFormat = _reasoningFormat,
+                ReasoningEffort = _reasoningEffort,
                 ServiceTier = _serviceTier                
             };
 
@@ -608,6 +619,7 @@ public class GroqClient :
             Stream = true,
             JsonResponse = _jsonResponse,
             ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
             ServiceTier = _serviceTier
         };
 
