@@ -89,7 +89,8 @@ namespace GroqSharp
                     writer.WriteStartArray();
                     foreach (var message in Messages)
                     {
-                        JsonSerializer.Serialize(writer, message, message.GetType(), options);
+                        writer.WriteRawValue(message.ToJson());
+                        //JsonSerializer.Serialize(writer, message,message.GetType(), options);
                     }
                     writer.WriteEndArray();
                 }

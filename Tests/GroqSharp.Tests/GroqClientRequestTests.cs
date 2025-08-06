@@ -56,6 +56,57 @@ namespace GroqSharp.Tests
         }
 
         [Fact]
+        public void ToJson_SerializesAllMultimodalPropertiesCorrectly()
+        {
+            // Arrange
+            var tools = new
+            {
+                type = "function",
+                function = new
+                {
+                    name = "example_tool",
+                    description = "An example tool",
+                    parameters = new { param1 = "value1" }
+                }
+            };
+
+            var request = new GroqClientRequest
+            {
+                Model = "llama3-70b-8192",
+                Temperature = 0.7,
+                Messages = new Message[] { new MultimodalMessage(MessageRoleType.User, [new TextContent("Hello")]) },
+                MaxTokens = 150,
+                TopP = 0.9,
+                Seed = 1,
+                Stop = "end",
+                Stream = true,
+                Tools = tools,
+                ToolChoice = "auto",
+                ReasoningFormat = "parsed",
+                ReasoningEffort = "default",
+                ServiceTier = "flex"
+            };
+
+            // Act
+            var json = request.ToJson();
+
+            // Assert
+            Assert.Contains("\"model\":\"llama3-70b-8192\"", json);
+            Assert.Contains("\"temperature\":0.7", json);
+            Assert.Contains("\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Hello\"}]}]", json);
+            Assert.Contains("\"max_tokens\":150", json);
+            Assert.Contains("\"top_p\":0.9", json);
+            Assert.Contains("\"seed\":1", json);
+            Assert.Contains("\"stop\":\"end\"", json);
+            Assert.Contains("\"stream\":true", json);
+            Assert.Contains("\"tools\":{\"type\":\"function\"", json);
+            Assert.Contains("\"tool_choice\":\"auto\"", json);
+            Assert.Contains("\"reasoning_format\":\"parsed\"", json);
+            Assert.Contains("\"reasoning_effort\":\"default\"", json);
+            Assert.Contains("\"service_tier\":\"flex\"", json);
+        }
+
+        [Fact]
         public void ToJson_OmitsNullProperties()
         {
             // Arrange
