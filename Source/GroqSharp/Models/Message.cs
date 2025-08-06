@@ -9,9 +9,26 @@ namespace GroqSharp.Models
         #region Instance Properties
 
         [JsonConverter(typeof(LowercaseEnumConverter<MessageRoleType>))]
-        public MessageRoleType Role { get; set; }  
+        public MessageRoleType Role { get; set; }
 
-        public required string Content { get; set; }
+        public virtual string Content { get; set; }
+
+        #endregion
+
+        #region Constructors
+
+        // Constructor that takes role and content
+        public Message(MessageRoleType role, string content)
+        {
+            Role = role;
+            Content = content;
+        }
+
+        // Parameterless constructor for JSON deserialization
+        public Message()
+        {
+            Content = "";
+        }
 
         #endregion
 
