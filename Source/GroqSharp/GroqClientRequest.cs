@@ -43,7 +43,10 @@ namespace GroqSharp
         public string ToolChoice { get; set; } = "none";
 
         [JsonPropertyName("reasoning_format")]
-        public string? ReasoningFormat { get; set; }
+        public string? ReasoningFormat { get; set; } 
+        
+        [JsonPropertyName("reasoning_effort")]
+        public string? ReasoningEffort { get; set; }
 
         [JsonPropertyName("service_tier")]
         public string? ServiceTier { get; set; }
@@ -86,7 +89,8 @@ namespace GroqSharp
                     writer.WriteStartArray();
                     foreach (var message in Messages)
                     {
-                        JsonSerializer.Serialize(writer, message, message.GetType(), options);
+                        writer.WriteRawValue(message.ToJson());
+                        //JsonSerializer.Serialize(writer, message,message.GetType(), options);
                     }
                     writer.WriteEndArray();
                 }
@@ -120,6 +124,11 @@ namespace GroqSharp
                     {
                         writer.WriteString("reasoning_format", ReasoningFormat);
                     }
+                }
+                
+                if(!string.IsNullOrEmpty(ReasoningEffort))
+                {
+                    writer.WriteString("reasoning_effort", ReasoningEffort);
                 }
                 
                 if(!string.IsNullOrEmpty(ServiceTier))

@@ -46,6 +46,7 @@ public class GroqClient :
     private int _maxToolInvocationDepth = 3;
     private bool _jsonResponse;
     private string? _reasoningFormat;
+    private string? _reasoningEffort;
     private string? _serviceTier;
     private bool _parallelToolInvocationAllowed = false;
     private Random _random;
@@ -158,6 +159,13 @@ public class GroqClient :
         string reasoningFormat)
     {
         _reasoningFormat = reasoningFormat;
+        return this;
+    } 
+    
+    public IGroqClient SetReasoningEffort(
+        string reasoningEffort)
+    {
+        _reasoningEffort = reasoningEffort;
         return this;
     }
         public IGroqClient SetServiceTier(
@@ -305,7 +313,8 @@ public class GroqClient :
         }
         catch (Exception ex)
         {
-            TryAttachMessages(ex, messages);
+            var ex2 = (ex is ApplicationException || ex is TaskCanceledException || ex is InvalidOperationException) ? ex : new ApplicationException("Failed to create chat completion", ex);
+            TryAttachMessages(ex2, messages);
             throw;
         }
     }
@@ -364,6 +373,7 @@ public class GroqClient :
             Stop = _stop,
             JsonResponse = _jsonResponse,
             ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
             ServiceTier = _serviceTier
         };
 
@@ -398,8 +408,9 @@ public class GroqClient :
         }
         catch (Exception ex)
         {
-            TryAttachMessages(ex, messageList);
-            throw;
+            var ex2 = (ex is ApplicationException || ex is TaskCanceledException || ex is InvalidOperationException) ? ex : new ApplicationException("Failed to create chat completion", ex);
+            TryAttachMessages(ex2, messageList);
+            throw ex2;
         }
     }
 
@@ -439,21 +450,22 @@ public class GroqClient :
             // Build request with potential tools included
             var toolSpecs = BuildToolSpecifications();
 
-            var request = new GroqClientRequest
-            {
-                Model = _model,
-                Messages = messages.ToArray(),
-                Tools = toolSpecs,
-                ToolChoice = "auto",
-                Temperature = _temperature,
-                Seed = _randomSeed ? _random.Next() : _seed,
-                MaxTokens = _maxTokens,
-                TopP = _topP,
-                Stop = _stop,
-                JsonResponse = _jsonResponse,
-                ReasoningFormat = _reasoningFormat,
-                ServiceTier = _serviceTier
-            };
+        var request = new GroqClientRequest
+        {
+            Model = _model,
+            Messages = messages.ToArray(),
+            Tools = toolSpecs,
+            ToolChoice = "auto",
+            Temperature = _temperature,
+            Seed = _randomSeed ? _random.Next() : _seed,
+            MaxTokens = _maxTokens,
+            TopP = _topP,
+            Stop = _stop,
+            JsonResponse = _jsonResponse,
+            ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
+            ServiceTier = _serviceTier
+        };
 
             string requestJson = request.ToJson();
             var content = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
@@ -479,8 +491,9 @@ public class GroqClient :
         }
         catch (Exception ex)
         {
-            TryAttachMessages(ex, messages);
-            throw;
+            var ex2 = (ex is ApplicationException || ex is TaskCanceledException || ex is InvalidOperationException) ? ex : new ApplicationException("Failed to create chat completion", ex);
+            TryAttachMessages(ex2, messages);
+            throw ex2;
         }
     }
 
@@ -545,6 +558,7 @@ public class GroqClient :
                 Stop = _stop,
                 JsonResponse = _jsonResponse,
                 ReasoningFormat = _reasoningFormat,
+                ReasoningEffort = _reasoningEffort,
                 ServiceTier = _serviceTier                
             };
 
@@ -569,8 +583,9 @@ public class GroqClient :
             {
                 if (attempt == _maxStructuredRetryAttempts)
                 {
-                    TryAttachMessages(ex, currentMessages);
-                    throw;
+                    var ex2 = (ex is ApplicationException || ex is TaskCanceledException || ex is InvalidOperationException) ? ex : new ApplicationException("Failed to create chat completion", ex);
+                    TryAttachMessages(ex2, currentMessages);
+                    throw ex2;
                 }
             }
         }
@@ -692,6 +707,7 @@ public class GroqClient :
             Stream = true,
             JsonResponse = _jsonResponse,
             ReasoningFormat = _reasoningFormat,
+            ReasoningEffort = _reasoningEffort,
             ServiceTier = _serviceTier
         };
 
@@ -720,8 +736,9 @@ public class GroqClient :
         }
         catch (Exception ex)
         {
-            TryAttachMessages(ex, messageList);
-            throw;
+            var ex2 = (ex is ApplicationException || ex is TaskCanceledException || ex is InvalidOperationException) ? ex : new ApplicationException("Failed to create chat completion", ex);
+            TryAttachMessages(ex2, messageList);
+            throw ex2;
         }
 
         // Stream the results after successful setup
