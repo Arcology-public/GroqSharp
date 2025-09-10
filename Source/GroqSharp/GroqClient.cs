@@ -219,20 +219,53 @@ public class GroqClient :
         return toolsList;
     }
 
+    /// <summary>
+    /// Attempts to attach messages to an exception's data dictionary.
+    /// If messages already exist, replaces them only if the new messages contain more elements.
+    /// </summary>
+    /// <param name="exception">The exception to attach messages to</param>
+    /// <param name="messages">The messages to potentially attach</param>
+    private static void TryAttachMessages(Exception exception, IEnumerable<Message> messages)
+    {
+        if (exception == null) return;
+        
+        var messageList = messages?.ToList();
+        if (messageList == null || !messageList.Any()) return;
+        
+        if (exception.Data.Contains("Messages"))
+        {
+            // Messages already attached - check if we should replace them
+            if (exception.Data["Messages"] is List<Message> existingMessages)
+            {
+                // Replace only if new messages contain more elements (longer conversation)
+                if (messageList.Count > existingMessages.Count)
+                {
+                    exception.Data["Messages"] = messageList;
+                }
+            }
+        }
+        else
+        {
+            // No messages attached yet - attach them
+            exception.Data["Messages"] = messageList;
+        }
+    }
+
     private async Task<string> HandleToolResponsesAndReinvokeAsync(
         List<Message> messages,
         GroqClientResponse response,
         int depth,
         CancellationToken? cancellationToken)
     {
-
-        // First check if max depth is exceeded
-        if (depth >= _maxToolInvocationDepth)
+        try
         {
-            var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
-            exception.Data["Messages"] = messages;
-            throw exception;
-        }
+            // First check if max depth is exceeded
+            if (depth >= _maxToolInvocationDepth)
+            {
+                var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+                TryAttachMessages(exception, messages);
+                throw exception;
+            }
 
         // Add the assistant's original response to the conversation before handling tool calls
         if (response.Contents.Any())
@@ -267,8 +300,14 @@ public class GroqClient :
             return await CreateChatCompletionWithToolsAsync(messages, depth, cancellationToken);
         }
 
-        // If there were no tool calls, just return the original response
-        return response.Contents.FirstOrDefault();
+            // If there were no tool calls, just return the original response
+            return response.Contents.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            TryAttachMessages(ex, messages);
+            throw;
+        }
     }
 
     private async Task<MessageTool> CallTool(GroqToolCall call)
@@ -298,15 +337,19 @@ public class GroqClient :
 
     public async Task<string?> CreateChatCompletionAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
     {
-        if (messages == null || messages.Count() == 0)
+        var messageList = messages?.ToList();
+        
+        if (messageList == null || messageList.Count == 0)
         {
             if (_defaultSystemMessage != null)
             {
-                messages = [_defaultSystemMessage];
+                messageList = new List<Message> { _defaultSystemMessage };
             }
             else
             {
-                throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+                var argEx = new ArgumentException("Messages cannot be null or empty", nameof(messages));
+                TryAttachMessages(argEx, messageList);
+                throw argEx;
             }
         }
 
@@ -315,7 +358,7 @@ public class GroqClient :
             Model = _model,
             Temperature = _temperature,
             Seed = _randomSeed ? _random.Next() : _seed,
-            Messages = messages.ToArray(),
+            Messages = messageList.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,
             Stop = _stop,
@@ -342,7 +385,9 @@ public class GroqClient :
             if (!response.IsSuccessStatusCode)
             {
                 var errorResponse = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+                var httpEx = new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+                TryAttachMessages(httpEx, messageList);
+                throw httpEx;
             }
 
             var chatResponse = GroqClientResponse.TryCreateFromJson(await response.Content.ReadAsStringAsync());
@@ -351,13 +396,10 @@ public class GroqClient :
                 return chatResponse.Contents.FirstOrDefault();
             return null;
         }
-        catch(TaskCanceledException ex)
-        {
-            throw new TaskCanceledException("Task was cancelled", ex);
-        }
         catch (Exception ex)
         {
-            throw new ApplicationException("Failed to create chat completion", ex);
+            TryAttachMessages(ex, messageList);
+            throw;
         }
     }
 
@@ -366,68 +408,80 @@ public class GroqClient :
         int depth = 0,
         CancellationToken? cancellationToken = null)
     {
-        if (depth >= _maxToolInvocationDepth)
+        try
         {
-            var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
-            exception.Data["Messages"] = messages;
-            throw exception;
-        }
-        if (cancellationToken.HasValue && cancellationToken.Value.IsCancellationRequested)
-        {
-            var exception = new TaskCanceledException("Task was cancelled");
-            exception.Data["Messages"] = messages;
-            throw exception;
-        }
-        if (messages == null || messages.Count == 0)
-        {
-            if (_defaultSystemMessage != null)
+            if (depth >= _maxToolInvocationDepth)
             {
-                messages = [_defaultSystemMessage];
+                var exception = new InvalidOperationException("Maximum tool invocation depth exceeded, possible loop detected.");
+                TryAttachMessages(exception, messages);
+                throw exception;
+            }
+            if (cancellationToken.HasValue && cancellationToken.Value.IsCancellationRequested)
+            {
+                var exception = new TaskCanceledException("Task was cancelled");
+                TryAttachMessages(exception, messages);
+                throw exception;
+            }
+            if (messages == null || messages.Count == 0)
+            {
+                if (_defaultSystemMessage != null)
+                {
+                    messages = new List<Message> { _defaultSystemMessage };
+                }
+                else
+                {
+                    var argEx = new ArgumentException("Messages cannot be null or empty", nameof(messages));
+                    TryAttachMessages(argEx, messages);
+                    throw argEx;
+                }
+            }
+
+            // Build request with potential tools included
+            var toolSpecs = BuildToolSpecifications();
+
+            var request = new GroqClientRequest
+            {
+                Model = _model,
+                Messages = messages.ToArray(),
+                Tools = toolSpecs,
+                ToolChoice = "auto",
+                Temperature = _temperature,
+                Seed = _randomSeed ? _random.Next() : _seed,
+                MaxTokens = _maxTokens,
+                TopP = _topP,
+                Stop = _stop,
+                JsonResponse = _jsonResponse,
+                ReasoningFormat = _reasoningFormat,
+                ServiceTier = _serviceTier
+            };
+
+            string requestJson = request.ToJson();
+            var content = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
+            HttpResponseMessage response;
+            if (cancellationToken != null)
+            {
+                response = await _client.PostAsync(_baseUrl, content, cancellationToken.Value);
             }
             else
             {
-                throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+                response = await _client.PostAsync(_baseUrl, content);
             }
-        }
+            if (!response.IsSuccessStatusCode)
+            {
+                var httpEx = new HttpRequestException($"API request failed: {await response.Content.ReadAsStringAsync()}");
+                TryAttachMessages(httpEx, messages);
+                throw httpEx;
+            }
 
-        // Build request with potential tools included
-        var toolSpecs = BuildToolSpecifications();
-
-        var request = new GroqClientRequest
-        {
-            Model = _model,
-            Messages = messages.ToArray(),
-            Tools = toolSpecs,
-            ToolChoice = "auto",
-            Temperature = _temperature,
-            Seed = _randomSeed ? _random.Next() : _seed,
-            MaxTokens = _maxTokens,
-            TopP = _topP,
-            Stop = _stop,
-            JsonResponse = _jsonResponse,
-            ReasoningFormat = _reasoningFormat,
-            ServiceTier = _serviceTier
-        };
-
-        string requestJson = request.ToJson();
-        var content = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
-        HttpResponseMessage response;
-        if (cancellationToken != null)
-        {
-            response = await _client.PostAsync(_baseUrl, content, cancellationToken.Value);
+            var responseJson = await response.Content.ReadAsStringAsync();
+            var chatResponse = GroqClientResponse.TryCreateFromJson(responseJson);
+            return await HandleToolResponsesAndReinvokeAsync(messages, chatResponse, depth + 1, cancellationToken);
         }
-        else
+        catch (Exception ex)
         {
-            response = await _client.PostAsync(_baseUrl, content);
+            TryAttachMessages(ex, messages);
+            throw;
         }
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new HttpRequestException($"API request failed: {await response.Content.ReadAsStringAsync()}");
-        }
-
-        var responseJson = await response.Content.ReadAsStringAsync();
-        var chatResponse = GroqClientResponse.TryCreateFromJson(responseJson);
-        return await HandleToolResponsesAndReinvokeAsync(messages, chatResponse, depth + 1, cancellationToken);
     }
 
 
@@ -503,7 +557,9 @@ public class GroqClient :
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorResponse = await response.Content.ReadAsStringAsync();
-                    throw new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+                    var httpEx = new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+                    TryAttachMessages(httpEx, currentMessages);
+                    throw httpEx;
                 }
 
                 var chatResponse = GroqClientResponse.TryCreateFromJson(await response.Content.ReadAsStringAsync());
@@ -513,7 +569,8 @@ public class GroqClient :
             {
                 if (attempt == _maxStructuredRetryAttempts)
                 {
-                    throw new ApplicationException("Failed to create chat completion", ex);
+                    TryAttachMessages(ex, currentMessages);
+                    throw;
                 }
             }
         }
@@ -525,60 +582,81 @@ public class GroqClient :
         params Message[] messages)
         where TResponse : class, new()
     {
-        if (messages == null || messages.Length == 0)
+        var messageList = messages?.ToList() ?? new List<Message>();
+        
+        try
         {
-            throw new ArgumentException("Messages cannot be null or empty");
-        }
-
-        // Generate the JSON structure from the response type
-        string jsonStructure = JsonStructureUtility.CreateJsonStructureFromType(typeof(TResponse), _typeCache);
-
-        // Extend the system message to include the JSON structure
-        var systemMessageIndex = messages.ToList().FindIndex(m => m.Role == MessageRoleType.System);
-        if (systemMessageIndex != -1)
-        {
-            messages[systemMessageIndex].Content += $" IMPORTANT: Please respond ONLY in JSON format as follows: {jsonStructure}";
-        }
-        else
-        {
-            // Add a new system message if none exists
-            var newSystemMessage = new Message
+            if (messageList.Count == 0)
             {
-                Role = MessageRoleType.System,
-                Content = $"IMPORTANT: Please respond ONLY in JSON format as follows:\n{jsonStructure}"
-            };
-            var messageList = new List<Message>(messages) { newSystemMessage };
+                var argEx = new ArgumentException("Messages cannot be null or empty");
+                TryAttachMessages(argEx, messageList);
+                throw argEx;
+            }
+
+            // Generate the JSON structure from the response type
+            string jsonStructure = JsonStructureUtility.CreateJsonStructureFromType(typeof(TResponse), _typeCache);
+
+            // Extend the system message to include the JSON structure
+            var systemMessageIndex = messageList.FindIndex(m => m.Role == MessageRoleType.System);
+            if (systemMessageIndex != -1)
+            {
+                messageList[systemMessageIndex].Content += $" IMPORTANT: Please respond ONLY in JSON format as follows: {jsonStructure}";
+            }
+            else
+            {
+                // Add a new system message if none exists
+                var newSystemMessage = new Message
+                {
+                    Role = MessageRoleType.System,
+                    Content = $"IMPORTANT: Please respond ONLY in JSON format as follows:\n{jsonStructure}"
+                };
+                messageList.Insert(0, newSystemMessage);
+            }
             messages = messageList.ToArray();
-        }
 
-        for (int attempt = 1; attempt <= _maxStructuredRetryAttempts; attempt++)
+            for (int attempt = 1; attempt <= _maxStructuredRetryAttempts; attempt++)
+            {
+                try
+                {
+                    // Call the existing method to get the JSON response
+                    string jsonResponse = await GetStructuredChatCompletionAsync(jsonStructure, messages);
+
+                    if (string.IsNullOrEmpty(jsonResponse))
+                    {
+                        var invalidOpEx = new InvalidOperationException("Received an empty response from the API.");
+                        TryAttachMessages(invalidOpEx, messageList);
+                        throw invalidOpEx;
+                    }
+
+                    // Deserialize the JSON response back into the expected type
+                    TResponse responsePoco = JsonSerializer.Deserialize<TResponse>(jsonResponse);
+                    if (responsePoco == null)
+                    {
+                        var invalidOpEx = new InvalidOperationException("Failed to deserialize the response.");
+                        TryAttachMessages(invalidOpEx, messageList);
+                        throw invalidOpEx;
+                    }
+
+                    return responsePoco;
+                }
+                catch (Exception ex)
+                {
+                    if (attempt == _maxStructuredRetryAttempts)
+                    {
+                        var appEx = new ApplicationException("Failed to create chat completion", ex);
+                        TryAttachMessages(appEx, messageList);
+                        throw appEx;
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                // Call the existing method to get the JSON response
-                string jsonResponse = await GetStructuredChatCompletionAsync(jsonStructure, messages);
-
-                if (string.IsNullOrEmpty(jsonResponse))
-                {
-                    throw new InvalidOperationException("Received an empty response from the API.");
-                }
-
-                // Deserialize the JSON response back into the expected type
-                TResponse responsePoco = JsonSerializer.Deserialize<TResponse>(jsonResponse) ??
-                                         throw new InvalidOperationException("Failed to deserialize the response.");
-
-                return responsePoco;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == _maxStructuredRetryAttempts)
-                {
-                    throw new ApplicationException("Failed to create chat completion", ex);
-                }
-            }
+            TryAttachMessages(ex, messageList);
+            throw;
         }
-
-        return null;
     }
 
     public async IAsyncEnumerable<string> CreateChatCompletionStreamAsync(
@@ -593,15 +671,21 @@ public class GroqClient :
 
     public async IAsyncEnumerable<string> CreateChatCompletionStreamAsync(IEnumerable<Message> messages, CancellationToken? cancellationToken = null)
     {
-        if (messages == null || messages.Count() == 0)
-            throw new ArgumentException("Messages cannot be null or empty", nameof(messages));
+        var messageList = messages?.ToList();
+        
+        if (messageList == null || messageList.Count == 0)
+        {
+            var argEx = new ArgumentException("Messages cannot be null or empty", nameof(messages));
+            TryAttachMessages(argEx, messageList);
+            throw argEx;
+        }
 
         var request = new GroqClientRequest
         {
             Model = _model,
             Temperature = _temperature,
             Seed = _randomSeed ? _random.Next() : _seed,
-            Messages = messages.ToArray(),
+            Messages = messageList.ToArray(),
             MaxTokens = _maxTokens,
             TopP = _topP,
             Stop = _stop,
@@ -614,23 +698,36 @@ public class GroqClient :
         string requestJson = request.ToJson();
         var httpContent = new StringContent(requestJson, Encoding.UTF8, ContentTypeJson);
 
-        HttpResponseMessage response;
-        if (cancellationToken != null)
+        HttpResponseMessage response = null;
+        
+        try
         {
-            response = await _client.PostAsync(_baseUrl, httpContent, cancellationToken.Value);
+            if (cancellationToken != null)
+            {
+                response = await _client.PostAsync(_baseUrl, httpContent, cancellationToken.Value);
+            }
+            else
+            {
+                response = await _client.PostAsync(_baseUrl, httpContent);
+            }
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorResponse = await response.Content.ReadAsStringAsync();
+                var httpEx = new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+                TryAttachMessages(httpEx, messageList);
+                throw httpEx;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            response = await _client.PostAsync(_baseUrl, httpContent);
-        }
-        if (!response.IsSuccessStatusCode)
-        {
-            var errorResponse = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"API request failed with status {response.StatusCode}: {errorResponse}");
+            TryAttachMessages(ex, messageList);
+            throw;
         }
 
+        // Stream the results after successful setup
         using var responseStream = await response.Content.ReadAsStreamAsync();
         using var reader = new StreamReader(responseStream);
+        
         string line;
         while ((line = await reader.ReadLineAsync()) != null)
         {
@@ -639,19 +736,29 @@ public class GroqClient :
                 var data = line.Substring(DataPrefix.Length);
                 if (data != StreamDoneSignal)
                 {
-                    using var doc = JsonDocument.Parse(data);
-                    var jsonElement = doc.RootElement;
-                    if (jsonElement.TryGetProperty(ChoicesKey, out var choices) && choices.GetArrayLength() > 0)
+                    string text = null;
+                    try
                     {
-                        var firstChoice = choices[0];
-                        if (firstChoice.TryGetProperty(DeltaKey, out var delta) && delta.TryGetProperty(ContentKey, out var content))
+                        using var doc = JsonDocument.Parse(data);
+                        var jsonElement = doc.RootElement;
+                        if (jsonElement.TryGetProperty(ChoicesKey, out var choices) && choices.GetArrayLength() > 0)
                         {
-                            var text = content.GetString();
-                            if (!string.IsNullOrEmpty(text))
+                            var firstChoice = choices[0];
+                            if (firstChoice.TryGetProperty(DeltaKey, out var delta) && delta.TryGetProperty(ContentKey, out var content))
                             {
-                                yield return text;
+                                text = content.GetString();
                             }
                         }
+                    }
+                    catch (JsonException)
+                    {
+                        // Skip malformed JSON lines in the stream
+                        continue;
+                    }
+                    
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        yield return text;
                     }
                 }
             }
